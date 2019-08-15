@@ -1,3 +1,4 @@
+source("SimData.r")
 library("glmertree")
 library("WGCNA")
 library("pre")

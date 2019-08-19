@@ -18,6 +18,7 @@ Longtree = function(data,fixed_regress=NULL,fixed_split=NULL,var_select=NULL,
                                        "|",cluster,"|",
                                      paste(fixed_split,collapse = "+")))
         mytree = lmertree(Formula, data = data,alpha = alpha,maxdepth=maxdepth)
+        mytree$final_selection = NULL
         return (mytree)
     } ###
     # Now var_select is not empty
@@ -116,7 +117,8 @@ Longtree_time = function(data,fixed_regress,fixed_split,var_select,power,cluster
         Formula = as.formula(paste("y~",paste(regress_var,collapse = "+"),
                                    "|",cluster,"|",
                                  paste(split_var,collapse = "+")))
-        mytree = lmertree(Formula, data = data,alpha=alpha,maxdepth=maxdepth) 
+        mytree = lmertree(Formula, data = data,alpha=alpha,maxdepth=maxdepth)
+        mytree$final_selection = final_var
         return(mytree)           
     }
     if(Fuzzy==FALSE){
@@ -199,6 +201,7 @@ Longtree_time = function(data,fixed_regress,fixed_split,var_select,power,cluster
                                    "|",cluster,"|",
                                  paste(split_var,collapse = "+")))
         mytree = lmertree(Formula, data = data,alpha=alpha,maxdepth=maxdepth) 
+        mytree$final_selection = final_var
         return(mytree)
     }
     
@@ -309,6 +312,7 @@ Longtree_PC = function(data,fixed_split, var_select, power=power,cluster,
                                    "|",cluster,"|",
                                  paste(split_var,collapse = "+")))
         mytree = lmertree(Formula, data = data,alpha=alpha,maxdepth=maxdepth)
+        mytree$final_selection = final_var
         return (mytree)
     }
     
@@ -404,6 +408,9 @@ Longtree_PC = function(data,fixed_split, var_select, power=power,cluster,
                                    "|",cluster,"|",
                                  paste(split_var,collapse = "+")))
         mytree = lmertree(Formula, data = data,alpha=alpha,maxdepth=maxdepth)
+        mytree$final_selection = final_var
         return (mytree)
-    }   
+    }
+    
+    
 }

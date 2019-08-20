@@ -3,8 +3,9 @@ library("WGCNA")
 library("pre")
 
 Longtree = function(data,fixed_regress=NULL,fixed_split=NULL,var_select=NULL,
-                    power=6,cluster,alpha=0.2,maxdepth_factor_screen=0.04,
-                    maxdepth_factor_select=0.5,Fuzzy=TRUE){
+                    power=6,cluster,maxdepth_factor_screen=0.04,
+                    maxdepth_factor_select=0.5,Fuzzy=TRUE,minsize_multiplier = 5,
+                    alpha_screen=0.2, alpha_select=0.2, alpha_predict=0.05){
     ### if there are no features to select, just use fixed_regress and fixed_split
     if(length(var_select)==0){
         if (length(fixed_regress)==0){
@@ -17,7 +18,7 @@ Longtree = function(data,fixed_regress=NULL,fixed_split=NULL,var_select=NULL,
         Formula = as.formula(paste("y~",paste(fixed_regress,collapse = "+"),
                                        "|",cluster,"|",
                                      paste(fixed_split,collapse = "+")))
-        mytree = lmertree(Formula, data = data,alpha = alpha,maxdepth=maxdepth)
+        mytree = lmertree(Formula,data=data,alpha=alpha_predict,maxdepth=maxdepth)
         mytree$final_selection = NULL
         return (mytree)
     } ###
@@ -27,24 +28,32 @@ Longtree = function(data,fixed_regress=NULL,fixed_split=NULL,var_select=NULL,
         cat("Use Longtree_PC\n")
         return(Longtree_PC(data=data,fixed_split=fixed_split,
                     var_select=var_select,
-                    power=power,cluster=cluster,alpha=alpha,
+                    power=power,cluster=cluster,
                     maxdepth_factor_screen=maxdepth_factor_screen, 
-                    maxdepth_factor_select=maxdepth_factor_select,Fuzzy=Fuzzy))
+                    maxdepth_factor_select=maxdepth_factor_select,Fuzzy=Fuzzy,
+                    minsize_multiplier=minsize_multiplier,
+                    alpha_screen=alpha_screen, alpha_select=alpha_select, 
+                    alpha_predict=alpha_predict))
     }###
     # Now we have non-empty var_select,fixed_regress
     cat("Use Longtree_time\n")
     return(Longtree_time(data=data,fixed_regress=fixed_regress,
                         fixed_split=fixed_split, var_select=var_select,
-                    power=power,cluster=cluster,alpha=alpha,
+                    power=power,cluster=cluster,
                     maxdepth_factor_screen=maxdepth_factor_screen, 
-                    maxdepth_factor_select=maxdepth_factor_select,Fuzzy=Fuzzy))
+                    maxdepth_factor_select=maxdepth_factor_select,Fuzzy=Fuzzy,
+                    minsize_multiplier=minsize_multiplier,
+                    alpha_screen=alpha_screen, alpha_select=alpha_select, 
+                    alpha_predict=alpha_predict))
                         
 }
 
 # Longtree_time: used when var_select and fixed_regress are non-empty
 # Longtree is equivalent to this Longtree_time in this case
 Longtree_time = function(data,fixed_regress,fixed_split,var_select,power,cluster,
-                         alpha,maxdepth_factor_screen,maxdepth_factor_select,Fuzzy){
+                         maxdepth_factor_screen,maxdepth_factor_select,
+                         Fuzzy,minsize_multiplier,alpha_screen,alpha_select,
+                         alpha_predict){
     # Cluster var_select
     data_WGCNA = data[var_select]
     # Must set numericLabels = FALSE so that it uses actual colors like "grey"
@@ -81,7 +90,7 @@ Longtree_time = function(data,fixed_regress,fixed_split,var_select,power,cluster
                     paste(split_var,collapse = "+")))
 
         # fit the tree
-        mytree = lmertree(Formula, data = data,alpha = alpha,maxdepth=maxdepth) 
+        mytree = lmertree(Formula, data = data,alpha=alpha_screen,maxdepth=maxdepth) 
 
         #extract important features
         imp_var[[length(imp_var)+1]] = get_split_names(mytree$tree,data)
@@ -103,7 +112,7 @@ Longtree_time = function(data,fixed_regress,fixed_split,var_select,power,cluster
             Formula = as.formula(paste("y~",paste(regress_var,collapse = "+"),
                                        "|",cluster,"|",
                                      paste(split_var,collapse = "+")))
-            mytree = lmertree(Formula, data = data,alpha = alpha,maxdepth=maxdepth) 
+            mytree = lmertree(Formula, data = data,alpha=alpha_select,maxdepth=maxdepth) 
             final_var = get_split_names(mytree$tree,data)
             cat("final features",final_var)      
         }else{
@@ -117,7 +126,9 @@ Longtree_time = function(data,fixed_regress,fixed_split,var_select,power,cluster
         Formula = as.formula(paste("y~",paste(regress_var,collapse = "+"),
                                    "|",cluster,"|",
                                  paste(split_var,collapse = "+")))
-        mytree = lmertree(Formula, data = data,alpha=alpha,maxdepth=maxdepth)
+        minsize = round(minsize_multiplier*length(regress_var))
+        mytree = lmertree(Formula, data = data,alpha=alpha_predict,maxdepth=maxdepth,
+                         minsize = minsize)
         mytree$final_selection = final_var
         return(mytree)           
     }
@@ -139,7 +150,7 @@ Longtree_time = function(data,fixed_regress,fixed_split,var_select,power,cluster
                     paste(split_var,collapse = "+")))
 
         # fit the tree
-        mytree = lmertree(Formula, data = data,alpha = alpha,maxdepth=maxdepth) 
+        mytree = lmertree(Formula, data = data,alpha=alpha_screen,maxdepth=maxdepth) 
 
         #extract important features
         imp_var[[length(imp_var)+1]] = get_split_names(mytree$tree,data)
@@ -152,7 +163,7 @@ Longtree_time = function(data,fixed_regress,fixed_split,var_select,power,cluster
             Formula = as.formula(paste("y~",paste(regress_var,collapse = "+"),
                                "|",cluster,"|",
                     paste(split_var,collapse = "+")))
-            mytree = lmertree(Formula, data = data,alpha = alpha,maxdepth=maxdepth) 
+            mytree = lmertree(Formula, data = data,alpha = alpha_screen,maxdepth=maxdepth) 
             final_var = get_split_names(mytree$tree,data)
             cat("There is only one module which is grey, final features",final_var)
         }else{
@@ -174,7 +185,7 @@ Longtree_time = function(data,fixed_regress,fixed_split,var_select,power,cluster
             Formula = as.formula(paste("y~",paste(regress_var,collapse = "+"),
                                        "|",cluster,"|",
                                      paste(split_var,collapse = "+")))
-            mytree = lmertree(Formula, data = data,alpha = alpha,maxdepth=maxdepth) 
+            mytree = lmertree(Formula, data = data,alpha = alpha_select,maxdepth=maxdepth) 
             final_var = get_split_names(mytree$tree,data)
             }
             cat("The chosen non-grey features are",final_var,"\n")
@@ -186,7 +197,7 @@ Longtree_time = function(data,fixed_regress,fixed_split,var_select,power,cluster
             Formula = as.formula(paste("y~",paste(regress_var,collapse = "+"),
                                        "|",cluster,"|",
                                      paste(split_var,collapse = "+")))
-            mytree = lmertree(Formula, data = data,alpha = alpha,maxdepth=maxdepth) 
+            mytree = lmertree(Formula, data = data,alpha = alpha_screen,maxdepth=maxdepth) 
             grey_var = get_split_names(mytree$tree,data)
             cat("The chosen grey features are",grey_var,"\n")
             # use final_var and grey_var do to the final model tree
@@ -200,7 +211,9 @@ Longtree_time = function(data,fixed_regress,fixed_split,var_select,power,cluster
         Formula = as.formula(paste("y~",paste(regress_var,collapse = "+"),
                                    "|",cluster,"|",
                                  paste(split_var,collapse = "+")))
-        mytree = lmertree(Formula, data = data,alpha=alpha,maxdepth=maxdepth) 
+        minsize = round(minsize_multiplier*length(regress_var))
+        mytree = lmertree(Formula, data = data,alpha=alpha_predict,maxdepth=maxdepth,
+                         minsize=minsize) 
         mytree$final_selection = final_var
         return(mytree)
     }
@@ -222,8 +235,10 @@ get_split_names = function(tree,data){
 
 # Longtree_PC: used when fixed_regress are NULL, use PC as regressors for non-grey module
 # Longtree is equivalent to this Longtree_PC in this case
-Longtree_PC = function(data,fixed_split, var_select, power=power,cluster,
-                    alpha, maxdepth_factor_screen,maxdepth_factor_select,Fuzzy){
+Longtree_PC = function(data,fixed_split, var_select, power,cluster,
+                    maxdepth_factor_screen,maxdepth_factor_select,Fuzzy,
+                    minsize_multiplier,alpha_screen,alpha_select,
+                    alpha_predict){
     # Cluster var_select
     data_WGCNA = data[var_select]
     # Must set numericLabels = FALSE so that it uses actual colors like "grey"
@@ -278,7 +293,7 @@ Longtree_PC = function(data,fixed_split, var_select, power=power,cluster,
                                  paste(split_var,collapse = "+")))
 
             # fit the tree
-            mytree = lmertree(Formula, data=data,alpha=alpha,maxdepth=maxdepth) 
+            mytree = lmertree(Formula, data=data,alpha=alpha_screen,maxdepth=maxdepth) 
             #extract important features
             imp_var[[length(imp_var)+1]] = get_split_names(mytree$tree,data)
         }        
@@ -296,7 +311,7 @@ Longtree_PC = function(data,fixed_split, var_select, power=power,cluster,
             Formula = as.formula(paste("y~","1",
                                        "|",cluster,"|",
                                      paste(split_var,collapse = "+")))
-            mytree = lmertree(Formula, data = data,alpha=alpha,maxdepth=maxdepth)
+            mytree = lmertree(Formula, data = data,alpha=alpha_select,maxdepth=maxdepth)
             final_var = get_split_names(mytree$tree,data)
             cat("Final features ",final_var,"\n")
             
@@ -311,7 +326,9 @@ Longtree_PC = function(data,fixed_split, var_select, power=power,cluster,
         Formula = as.formula(paste("y~",paste(final_var,collapse = "+"),
                                    "|",cluster,"|",
                                  paste(split_var,collapse = "+")))
-        mytree = lmertree(Formula, data = data,alpha=alpha,maxdepth=maxdepth)
+        minsize = round(minsize_multiplier*length(final_var))
+        mytree = lmertree(Formula, data = data,alpha=alpha_predict,maxdepth=maxdepth,
+                         minsize = minsize)
         mytree$final_selection = final_var
         return (mytree)
     }
@@ -336,7 +353,7 @@ Longtree_PC = function(data,fixed_split, var_select, power=power,cluster,
                                  paste(split_var,collapse = "+")))
 
             # fit the tree
-            mytree = lmertree(Formula, data=data,alpha=alpha,maxdepth=maxdepth) 
+            mytree = lmertree(Formula, data=data,alpha=alpha_screen,maxdepth=maxdepth) 
             #extract important features
             imp_var[[length(imp_var)+1]] = get_split_names(mytree$tree,data)
         }
@@ -350,7 +367,7 @@ Longtree_PC = function(data,fixed_split, var_select, power=power,cluster,
             Formula = as.formula(paste("y~",paste(regress_var,collapse = "+"),
                                    "|",cluster,"|",
                                  paste(split_var,collapse = "+")))
-            mytree = lmertree(Formula, data=data,alpha=alpha,maxdepth=maxdepth) 
+            mytree = lmertree(Formula, data=data,alpha=alpha_screen,maxdepth=maxdepth) 
             final_var = get_split_names(mytree$tree,data)
             cat("There is only grey module ",final_var,"\n")
         }
@@ -365,13 +382,13 @@ Longtree_PC = function(data,fixed_split, var_select, power=power,cluster,
             Formula = as.formula(paste("y~",paste(regress_var,collapse = "+"),
                                    "|",cluster,"|",
                                  paste(split_var,collapse = "+")))
-            mytree = lmertree(Formula, data=data,alpha=alpha,maxdepth=maxdepth) 
+            mytree = lmertree(Formula, data=data,alpha=alpha_screen,maxdepth=maxdepth) 
             grey_var = get_split_names(mytree$tree,data)
             final_var = c(final_var,grey_var)
             cat("The final features ",final_var,"\n")
         }
         if(length(imp_var)>1){
-            # at least two non-grey modules, screen among non-grey modules
+            # at least two non-grey modules, select among non-grey modules
             final_var = imp_var[[1]]
             for (i in 2:length(imp_var)){
                 final_var = c(final_var,imp_var[[i]])
@@ -384,7 +401,7 @@ Longtree_PC = function(data,fixed_split, var_select, power=power,cluster,
             Formula = as.formula(paste("y~",paste(regress_var,collapse = "+"),
                                    "|",cluster,"|",
                                  paste(split_var,collapse = "+")))
-            mytree = lmertree(Formula, data=data,alpha=alpha,maxdepth=maxdepth)
+            mytree = lmertree(Formula, data=data,alpha=alpha_select,maxdepth=maxdepth)
             final_var = get_split_names(mytree$tree,data)
             # Now final_var contains final non-grey features
             cat("Final non-grey features ",final_var,"\n")
@@ -395,7 +412,7 @@ Longtree_PC = function(data,fixed_split, var_select, power=power,cluster,
             Formula = as.formula(paste("y~",paste(regress_var,collapse = "+"),
                                    "|",cluster,"|",
                                  paste(split_var,collapse = "+")))
-            mytree = lmertree(Formula, data=data,alpha=alpha,maxdepth=maxdepth) 
+            mytree = lmertree(Formula, data=data,alpha=alpha_screen,maxdepth=maxdepth) 
             grey_var = get_split_names(mytree$tree,data)
             cat("Final grey features ",grey_var,"\n")
             final_var = c(final_var,grey_var)
@@ -407,7 +424,9 @@ Longtree_PC = function(data,fixed_split, var_select, power=power,cluster,
         Formula = as.formula(paste("y~",paste(final_var,collapse = "+"),
                                    "|",cluster,"|",
                                  paste(split_var,collapse = "+")))
-        mytree = lmertree(Formula, data = data,alpha=alpha,maxdepth=maxdepth)
+        minsize = round(minsize_multiplier*length(final_var))
+        mytree = lmertree(Formula, data = data,alpha=alpha_predict,maxdepth=maxdepth,
+                         minsize = minsize)
         mytree$final_selection = final_var
         return (mytree)
     }
